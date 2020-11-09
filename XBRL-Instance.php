@@ -1856,7 +1856,7 @@ class XBRL_Instance
 							if ( ! isset( $attributes['id'] ) )
 							{
 								XBRL_Log::getInstance()->instance_validation( "4.7.1", "All contexts MUST have an id attribute", array() );
-								continue;
+								continue 2;
 							}
 
 							$context = array();
