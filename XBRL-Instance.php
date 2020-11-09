@@ -2060,19 +2060,19 @@ class XBRL_Instance
 							if ( ! property_exists( $xlinkAttributes, 'type' ) || $xlinkAttributes->type != 'simple' )
 							{
 								$this->log()->instance_validation( "3.5.2.4.1", "A 'type' attribute MUST exist on a roleRef element and MUST have the content 'simple'", array() );
-								continue;
+								continue 2;
 							}
 
 							if ( ! property_exists( $xlinkAttributes, 'href' ) )
 							{
 								$this->log()->instance_validation( "3.5.2.4.2", "A 'href' attribute MUST exist on a roleRef element and MUST be a valid URI", array() );
-								continue;
+								continue 2;
 							}
 
 							if ( ! property_exists( $element->attributes(), 'roleURI' ) )
 							{
 								$this->log()->instance_validation( "3.5.2.4.5", "An 'roleURI' attribute MUST exist on a roleRef element and MUST be a valid URI", array() );
-								continue;
+								continue 2;
 							}
 
 							$roleRefHref = (string) $xlinkAttributes->href;
@@ -2086,7 +2086,7 @@ class XBRL_Instance
 										'roleUri' => $roleUri
 									)
 								);
-								continue;
+								continue 2;
 							}
 
 							$roleRefs[ $roleUri ] = $fragment;
@@ -2101,19 +2101,19 @@ class XBRL_Instance
 							if ( ! property_exists( $xlinkAttributes, 'type' ) || $xlinkAttributes->type != 'simple' )
 							{
 								$this->log()->instance_validation( "3.5.2.5.1", "A 'type' attribute MUST exist on a arcroleRef element and MUST have the content 'simple'", array() );
-								continue;
+								continue 2;
 							}
 
 							if ( ! property_exists( $xlinkAttributes, 'href' ) )
 							{
 								$this->log()->instance_validation( "3.5.2.5.2", "A 'href' attribute MUST exist on a arcroleRef element and MUST be a valid URI", array() );
-								continue;
+								continue 2;
 							}
 
 							if ( ! property_exists( $element->attributes(), 'arcroleURI' ) )
 							{
 								$this->log()->instance_validation( "3.5.2.5.5", "An 'arcroleURI' attribute MUST exist on a arcroleRef element and MUST be a valid URI", array() );
-								continue;
+								continue 2;
 							}
 
 							$arcroleRefHref = (string) $xlinkAttributes->href;
@@ -2127,7 +2127,7 @@ class XBRL_Instance
 										'arcroleUri' => $arcroleUri
 									)
 								);
-								continue;
+								continue 2;
 							}
 
 							$arcroleRefs[ $arcroleUri ] = $fragment;
@@ -2143,7 +2143,7 @@ class XBRL_Instance
 							if ( ! property_exists( $xlinkAttributes, 'type' ) || $xlinkAttributes->type != 'simple' )
 							{
 								$this->log()->instance_validation( "4.3.1", "A 'type' attribute MUST exist on a linkbaseRef element and MUST have the content 'simple'", array() );
-								continue;
+								continue 2;
 							}
 
 							if ( ! property_exists( $xlinkAttributes, 'arcrole' ) || $xlinkAttributes->arcrole != XBRL_Constants::$arcRoleLinkbase )
@@ -2153,13 +2153,13 @@ class XBRL_Instance
 										'content' => XBRL_Constants::$arcRoleLinkbase,
 									)
 								);
-								continue;
+								continue 2;
 							}
 
 							if ( ! property_exists( $xlinkAttributes, 'href' ) )
 							{
 								$this->log()->instance_validation( "4.3.2", "A 'href' attribute MUST exist on a linkbaseRef element", array() );
-								continue;
+								continue 2;
 							}
 
 							$href = (string) $xlinkAttributes->href;
@@ -2170,7 +2170,7 @@ class XBRL_Instance
 							$taxonomy = $this->getInstanceTaxonomy();
 							if ( $taxonomy->getLinkbase( $href ) )
 							{
-								continue;
+								continue 2;
 							}
 
 							$linkbaseRef = array(
