@@ -5421,7 +5421,13 @@ class XBRL_Instance
 						if ( isset( $item['dimension'] ) )
 						{
 							$dimTaxonomy = $this->getInstanceTaxonomy()->getTaxonomyForNamespace( $item['dimension']['namespace'] );
+							
+							if (! $dimTaxonomy) {
+							    continue;
+							}
+							
 							$dimXsd = $dimTaxonomy->getTaxonomyXSD();
+							
 							$dim = "$dimXsd#{$item['dimension']['element']['id']}";
 
 							$this->contextDimensionMemberList[ $entry['contextRef'] ][ $contextElement ]['data'][ $dim ] = array();
