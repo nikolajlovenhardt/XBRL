@@ -6029,7 +6029,10 @@ class XBRL_Instance
 				foreach ( $schemaTypes as $schemaType )
 				{
 					$type = $types->getType( $schemaType );
-					if ( isset( $type['pattern'] ) )
+					
+					if (is_bool($type)) {
+						$result = true;
+					} elseif ( isset( $type['pattern'] ) )
 					{
 						$result |= preg_match( "/{$type['pattern']}/", $code );
 					}
