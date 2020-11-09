@@ -11438,8 +11438,10 @@ class XBRL {
 								{
 									foreach ( $memberNodes as $key => $memberNode )
 									{
-										if ( $memberNode['arcrole'] == XBRL_Constants::$arcRoleHypercubeDimension ||
-											 $memberNode['arcrole'] == XBRL_Constants::$arcRoleDimensionDomain )
+										$arcrole = $memberNode['arcrole'] ?? null;
+										
+										if ( $arcrole == XBRL_Constants::$arcRoleHypercubeDimension ||
+										     $arcrole == XBRL_Constants::$arcRoleDimensionDomain )
 										{
 											return false;
 										}
@@ -11531,12 +11533,15 @@ class XBRL {
 					{
 						$this->log()->warning( "Sorting: can't find parent $label" );
 					}
+					
+					$first = $a['parents'][ $label ]['order'] ?? null;
+					$second = $b['parents'][ $label ]['order'] ?? null;
 
-					if ( $a['parents'][ $label ]['order'] == $b['parents'][ $label ]['order'] )
+					if ( $first == $second )
 					{
 						return strcmp( $a['label'], $b['label'] );
 					}
-					return ( $a['parents'][ $label ]['order'] < $b['parents'][ $label ]['order'] ) ? -1 : 1;
+					return ( $first < $second ) ? -1 : 1;
 				} );
 			}
 
