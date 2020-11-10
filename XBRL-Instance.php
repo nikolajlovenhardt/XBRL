@@ -1444,7 +1444,7 @@ class XBRL_Instance
 	{
 		if ( $localPrefix == 'xml' )
 			return $localPrefix;
-		$namespace = $this->getInstanceNamespaces()[ $localPrefix ];
+		$namespace = $this->getInstanceNamespaces()[ $localPrefix ] ?? null;
 		$taxonomy = $this->getInstanceTaxonomy()->getTaxonomyForNamespace( $namespace );
 		return $taxonomy
 			? $taxonomy->getPrefix()
