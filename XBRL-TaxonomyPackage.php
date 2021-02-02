@@ -77,6 +77,12 @@ EOT;
 	private $catalog;
 
 	/**
+	 * This collection will be a list of specific entry points to skip
+	 * @var array
+	 */
+	public $skipEntryPoints = array();
+
+	/**
 	 * Required. Provides a URI that uniquely identifies the package.
 	 * @var string
 	 */
@@ -140,7 +146,7 @@ EOT;
 	/**
 	 * This element is not supported
 	 * Optional (1) Provides the identifer of a Taxonomy Package which is superseded by the current taxonomy.
-	 * @var array[taxonomyPackageRef]
+	 * @var XBRL_Package[]
 	 */
 	public $supersededTaxonomyPackages = array();
 
@@ -161,7 +167,7 @@ EOT;
 	 * 					entryPointDocument (Uri - *)
 	 * 					languages (string - *)
 	 * 				If the entryPointDocument uri points to anything other than a schema or linkbase the package will be invalid
-	 * @var array[entryPoint]
+	 * @var array
 	 */
 	public $entryPoints = array();
 
@@ -194,9 +200,49 @@ EOT;
 	}
 
 	/**
+	 * Compile all entry point taxonmies
+	 * @param string $cacheLocation
+	 * @param string $compiledPath (optional) Path to the compiled taxonomies folder
+	 * @return array A list of compiled entry points
+	 * @throws Exception
+	 */
+	public function compileAll( $cacheLocation, $compiledPath  )
+	{
+		$compiled = array();
+
+		foreach( $this->entryPoints as $entryPoint )
+		{
+			$entryPointDocument = reset( $entryPoint['entryPointDocument'] );
+			if ( array_search( $entryPointDocument, $this->skipEntryPoints ) !== false ) continue;
+			$basename = $this->getSchemaFileBasename( "", $entryPointDocument );
+
+			\XBRL_Global::reset();
+			$context = XBRL_Global::getInstance();
+			$context->useCache = true;
+			$context->cacheLocation = $cacheLocation;
+			$context->initializeCache();
+			XBRL_Log::getInstance()->resetConformanceIssueWarning();
+
+			if ( $this->isCompiled( $compiledPath, $basename ) ) continue;
+
+			if ( $this->compile( $basename, $compiledPath, $entryPointDocument ) )
+			{
+				if ( XBRL_Log::getInstance()->hasConformanceIssueWarning() )
+				{
+					echo "There are conformance issues found during taxonomy compilation for {$entryPointDocument}\n";
+				}
+
+				$compiled[] = $entryPointDocument;
+			}
+		}
+
+		return $compiled;
+	}
+
+	/**
 	 * Returns true if the zip file represents a package that meets the taxonomy package specification
 	 * {@inheritDoc}
-	 * @see XBRL_IPackage::isPackage()
+	 * @see XBRL_Package::isPackage()
 	 */
 	public function isPackage()
 	{
@@ -262,7 +308,7 @@ EOT;
 			// The root element should be taxonomyPackage
 			if ( $xml->getName() != XBRL_TaxonomyPackage::rootElementNme )
 			{
-				throw XBRL_TaxonomyPackageException::withError( "tpe:invalidMetaDataFile", $ex->getMessage() );
+				throw XBRL_TaxonomyPackageException::withError( "tpe:invalidMetaDataFile", "Root name of $metaFilePath is not 'taxonomyPackage'" );
 			}
 
 			$this->metaFile = $xml;
@@ -273,6 +319,7 @@ EOT;
 
 			foreach ( $xml->children( $namespace ) as $name => $element )
 			{
+				/** @var SimpleXMLElement $element */
 				switch ( $name )
 				{
 					case 'name':
@@ -329,7 +376,7 @@ EOT;
 
 						$elementAttributes = $xml->attributes();
 						$licenseName = isset( $elementAttributes['name'] ) ? (string)$elementAttributes['name'] : '';
-						if ( ! $licenseName ) continue;
+						if ( ! $licenseName ) break;
 						$href = isset( $elementAttributes['href'] ) ? (string)$elementAttributes['href'] : '';
 
 						$this->$name['name'] = $licenseName;
@@ -349,6 +396,7 @@ EOT;
 
 						foreach ( $element->children( $namespace ) as $entryPointName => $entryPoint )
 						{
+							/** @var SimpleXMLElement $entryPoint */
 							$elementXmlAttributes = $entryPoint->attributes( 'xml', true );
 							$elementLang2 = isset( $elementXmlAttributes['lang'] ) ? (string)$elementXmlAttributes['lang'] : $elementLang;
 
@@ -357,6 +405,7 @@ EOT;
 
 							foreach ( $entryPoint->children( $namespace ) as $elementName => $element )
 							{
+								/** @var SimpleXMLElement $element */
 								switch ( $elementName )
 								{
 									case 'name':
@@ -477,7 +526,7 @@ EOT;
 			// The root element should be taxonomyPackage
 			if ( $xml->getName() != XBRL_TaxonomyPackage::catalogRootElementNme )
 			{
-				throw XBRL_TaxonomyPackageException::withError( "tpe:invalidCatalogFile", $ex->getMessage() );
+				throw XBRL_TaxonomyPackageException::withError( "tpe:invalidCatalogFile", "The root slement name of $catalogFilePath is not " . XBRL_TaxonomyPackage::catalogRootElementNme );
 			}
 
 			$this->catalog = $xml;
@@ -485,6 +534,7 @@ EOT;
 
 			foreach ( $xml->children( $namespace ) as $name => $element )
 			{
+				/** @var SimpleXMLElement $element */
 				switch ( $name )
 				{
 					case 'rewriteURI':
@@ -583,11 +633,12 @@ EOT;
 		}
 		else if ( is_string( $entryPointId ) )
 		{
-			return @reset( array_filter( $this->entryPoints, function( $entryPoint ) use ( $entryPointId )
+			$entryPoints = array_filter( $this->entryPoints, function( $entryPoint ) use ( $entryPointId )
 			{
 				return isset( $entryPoint['entryPointDocument'][0] ) &&
 					   $entryPoint['entryPointDocument'][0] == $entryPointId;
-			} ) );
+			} );
+			return @reset( $entryPoints );
 		}
 
 		return array();
@@ -695,7 +746,7 @@ EOT;
 		if ( $context->findCachedFile( $this->schemaFile ) )
 		{
 			$this->errors[] = "The schema file '{$this->schemaFile}' already exists in the cache.";
-			return false;
+			return true;
 		}
 
 		// Look at the entry points and remap them to their location in the zip file

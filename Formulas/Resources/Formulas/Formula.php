@@ -61,8 +61,9 @@ use lyquidity\xml\schema\SchemaTypes;
 use lyquidity\XPath2\XPath2Exception;
 use lyquidity\XPath2\XPath2ResultType;
 use XBRL\Formulas\Exceptions\FormulasException;
+use XBRL_Log;
 
- /**
+/**
   * A class to process a formula definitions
   */
 class Formula extends VariableSet
@@ -493,7 +494,8 @@ class Formula extends VariableSet
 		$attributes = $node->attributes();
 
 		$result = parent::process( $localName, $taxonomy, $roleUri, $linkbaseHref, $label, $node, $domNode, $log );
-		$isTuple = $result['variablesetType'] = $this->isTuple() ? 'tuple' : 'formula';
+		// $isTuple = 
+		$result['variablesetType'] = $this->isTuple() ? 'tuple' : 'formula';
 
 		// Get local namespaces but not any default
 		$localNamespaces = array_filter( $node->getDocNamespaces( true, false ), function( $namespace, $prefix ) {
@@ -580,7 +582,7 @@ class Formula extends VariableSet
 		$result['decimalsRule'] = $this->decimalsRule;
 		$result['precisionRule'] = $this->precisionRule;
 
-		$formulaAspects = array();
+		// $formulaAspects = array();
 		$validAspects = $this->aspectModel == "dimensional" ? self::$dimensionAspectRuleMembers : self::$nonDimensionAspectRuleMembers;
 
 		$error = false;
@@ -1044,7 +1046,7 @@ class Formula extends VariableSet
 					{
 						$log->formula_validation( "Formula", "The concept provided by the concept aspect rule is not a valid schema element",
 							array(
-								'formula' => $label,
+								'formula' => $this->label,
 								'error' => 'xbrlfe:missingConceptRule'
 							)
 						);
@@ -1138,7 +1140,7 @@ class Formula extends VariableSet
 				}
 			}
 
-			if ( $this->conceptRule['qname'] )
+			if ( $this->conceptRule['qname'] ?? false )
 			{
 				// BMS 2015-03-26
 				// If the concept rule is really a source then the qname will reference a variable so reset
@@ -1164,7 +1166,7 @@ class Formula extends VariableSet
 			{
 				$log->formula_validation( "Formula", "The concept provided by the concept aspect rule is not a valid schema element",
 					array(
-						'formula' => $label,
+						'formula' => $this->label,
 						'error' => 'xbrlfe:missingConceptRule'
 					)
 				);
@@ -1250,6 +1252,8 @@ class Formula extends VariableSet
 	 */
 	public function getIsFormulaUncoveredQName( $source )
 	{
+		if ( ! $source ) return;
+
 		return $source instanceof QName
 			? $source->namespaceURI == \XBRL_Constants::$standardPrefixes[ STANDARD_PREFIX_FORMULA ] && $source->localName == 'uncovered'
 			: $source['namespace'] == \XBRL_Constants::$standardPrefixes[ STANDARD_PREFIX_FORMULA ] && $source['name'] == 'uncovered';
@@ -1257,7 +1261,7 @@ class Formula extends VariableSet
 
 	/**
 	 * Allows a resource to return a list of the qnames of any variable references they contain
-	 * @return array[\QName]
+	 * @return \lyquidity\xml\QName[]
 	 */
 	public function getVariableRefs()
 	{
@@ -1937,6 +1941,9 @@ class Formula extends VariableSet
 				$typeIsNumeric = true;
 				// Create a unit
 				$unit = $this->getUnitAspectValue( $this->source, $evaluationResult, $log );
+				/**
+				 * @var Unit $unitRule
+				 */
 				$unitRule = Unit::fromArray( $this->unitRule );
 				$namespaces = array_merge( $namespaces, $unitRule->getAdditionalNamespaces( $this, $evaluationResult ) );
 			}
@@ -2104,7 +2111,7 @@ class Formula extends VariableSet
 						$element = \XBRL_Types::getInstance()->getElement( $dimensionId );
 						if ( ! $element )
 						{
-							$log->warning("Cannot find the context dimension {$contextDimension['dimension']} in the hypercube role '$roleUri' for primary item '{$conceptQName->localName}'");
+							XBRL_Log::getInstance()->warning("Cannot find the context dimension {$dimensionId} in the hypercube role '$roleUri' for primary item '{conceptPrimaryItemId}'" );
 							break;
 						}
 						$contextDimensionId = "{$taxonomy->getTaxonomyXSD()}#{$element['id']}";
@@ -2328,7 +2335,7 @@ class Formula extends VariableSet
 			// TODO
 			// This function will throw an exception if there is a problem so there is no return value to check
 			$location = Location::fromArray( $this->locationRule );
-			$this->checkSAVConflicts( $location->source, ASPECT_LOCATION, $evaluationResult, $log );
+			$this->checkSAVConflicts( $this->location->source, ASPECT_LOCATION, $evaluationResult, $log );
 		}
 	}
 
@@ -2624,7 +2631,7 @@ class Formula extends VariableSet
 
 	/**
 	 * Generates hashes for all the elements of the key
-	 * @param $elements An array of key elements for which to create the hashes
+	 * @param array $elements An array of key elements for which to create the hashes
 	 * @return array An array of the elements indexed by their hashes and the overall hash
 	 */
 	private function hashArray( $elements )
@@ -2668,12 +2675,13 @@ class Formula extends VariableSet
 	 * binds as a sequence unless the aspect rule addresses an aspect that is not covered by a filter for the fact variable
 	 * @param array $source
 	 * @param string $aspect
-	 * @param aray $evaluationResult
+	 * @param array $evaluationResult
 	 * @param \XBRL_Log $log
 	 */
 	private function checkSAVConflicts( $source, $aspect, $evaluationResult, $log )
 	{
 		// Find out if $source refers to a variable in the evaluation result
+		if ( ! $source ) return;
 		$qname = new QName( $source['originalPrefix'], $source['namespace'], $source['name'] );
 		if ( ! isset( $evaluationResult['vars'][ $qname->clarkNotation() ] ) ) return;
 
